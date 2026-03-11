@@ -1,0 +1,1 @@
+DisallowedHost\n          at /api/patients/patients/3/active_critical_alert/

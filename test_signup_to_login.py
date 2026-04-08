@@ -33,7 +33,7 @@ def run_test():
     }
     
     response = client.post(
-        '/api/admincenter/signup/',
+        '/admincenter/signup/',
         json.dumps(signup_data),
         content_type='application/json'
     )
@@ -49,7 +49,7 @@ def run_test():
     }
     
     response = client.post(
-        '/api/doctor/login/',
+        '/doctor/login/',
         json.dumps(login_data),
         content_type='application/json'
     )

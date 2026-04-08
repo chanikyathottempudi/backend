@@ -15,6 +15,12 @@ class DicomScan(models.Model):
     file = models.FileField(upload_to=dicom_upload_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=50, default='UPLOADED') # UPLOADED, PROCESSING, COMPLETED, FAILED
+    
+    # Metadata extracted from DICOM
+    modality = models.CharField(max_length=50, null=True, blank=True, help_text="e.g., CT")
+    study_instance_uid = models.CharField(max_length=100, null=True, blank=True)
+    series_instance_uid = models.CharField(max_length=100, null=True, blank=True)
+    protocol_name = models.CharField(max_length=200, null=True, blank=True)
 
     def __str__(self):
         return f"Scan {self.id} for {self.patient.name if self.patient else 'Unknown'}"

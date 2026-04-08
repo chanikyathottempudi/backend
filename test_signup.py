@@ -53,22 +53,54 @@ def run_test():
     
     # Verify User
     user = User.objects.get(username="1234567")
-    print(f"✓ Found User object: {user.username}")
+    print(f"Found User object: {user.username}")
     assert user.email == "emily.carter@hospital.com"
     
     # Verify Profile
     profile = UserProfile.objects.get(user=user)
-    print(f"✓ Found UserProfile object: {profile.employee_id} ({profile.role})")
+    print(f"Found UserProfile object: {profile.employee_id} ({profile.role})")
     assert profile.employee_id == "1234567"
     assert profile.role == "Radiologist"
     
     # Verify Settings (via signal)
     settings = SecuritySettings.objects.get(user=user)
-    print(f"✓ Found SecuritySettings object: {settings}")
+    print(f"Found SecuritySettings object: {settings}")
     assert settings.biometric_login == False # default
     assert settings.data_encryption == True # default
     
-    # 4. Test Error Handling (Missing Role)
+    # 4. Test Signup without employee_id (Email fallback)
+    print("\nTesting POST /api/admincenter/signup/ without employee_id (Email fallback)...")
+    fallback_data = {
+        "full_name": "James Wilson",
+        "email": "james.wilson@hospital.com",
+        "role": "CT Technician",
+        "password": "techpassword789"
+    }
+    # Ensure cleanup
+    User.objects.filter(email='james.wilson@hospital.com').delete()
+    User.objects.filter(username='james.wilson@hospital.com'[:50]).delete()
+    print("Cleanup done for James Wilson.")
+
+    response = client.post(
+        '/api/admincenter/signup/',
+        json.dumps(fallback_data),
+        content_type='application/json'
+    )
+    
+    print(f"POST Response Status Code: {response.status_code}")
+    if response.status_code != 201:
+        print(f"Error Response: {response.content}")
+    assert response.status_code == 201, f"Expected 201 Created, got {response.status_code}"
+    
+    user = User.objects.get(email='james.wilson@hospital.com')
+    print(f"Found User with email-based username: {user.username}")
+    assert user.username == 'james.wilson@hospital.com'[:50]
+    
+    profile = UserProfile.objects.get(user=user)
+    print(f"Found UserProfile with email-based employee_id: {profile.employee_id}")
+    assert profile.employee_id == 'james.wilson@hospital.com'[:50]
+
+    # 5. Test Error Handling (Missing Role)
     print("\nTesting POST /api/admincenter/signup/ with missing requires fields...")
     invalid_data = {
         "first_name": "John",
@@ -89,14 +121,14 @@ def run_test():
     error_data = response.json()
     assert 'employee_id' in error_data
     assert 'role' in error_data
-    print("✓ Missing fields correctly rejected (400)")
+    print("Missing fields correctly rejected (400)")
     
-    print("\nAll tests passed successfully! The Dedicated Signup Backend endpoint fully supports the Android app requirements. 🎉")
+    print("\nAll tests passed successfully! The Dedicated Signup Backend endpoint fully supports the Android app requirements.")
 
 if __name__ == '__main__':
     try:
         run_test()
     except AssertionError as e:
-        print(f"\n❌ Test Failed: {e}")
+        print(f"\nTest Failed: {e}")
     except Exception as e:
-        print(f"\n❌ An error occurred: {e}")
+        print(f"\nAn error occurred: {e}")

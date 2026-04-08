@@ -191,6 +191,90 @@ class ScanDoseViewSet(viewsets.ModelViewSet):
             "protocol_tip": protocol_tip
         })
 
+    @action(detail=False, methods=['get'])
+    def daily_trend(self, request):
+        patient_id = request.query_params.get('patient_id')
+        if not patient_id:
+            return Response({"success": False, "error": "patient_id required"}, status=400)
+        
+        # Last 7 days daily total
+        seven_days_ago = timezone.now() - timedelta(days=7)
+        from django.db.models.functions import TruncDate
+        daily_doses = self.queryset.filter(
+            patient__patient_id=patient_id, 
+            scan_date__gte=seven_days_ago
+        ).annotate(date=TruncDate('scan_date')).values('date').annotate(daily_total=Sum('total_dlp')).order_by('date')
+        
+        return Response({"success": True, "data": daily_doses})
+
+    @action(detail=False, methods=['get'])
+    def monthly_trend(self, request):
+        patient_id = request.query_params.get('patient_id')
+        if not patient_id:
+            return Response({"success": False, "error": "patient_id required"}, status=400)
+        
+        # Last 6 months
+        six_months_ago = timezone.now() - timedelta(days=180)
+        from django.db.models.functions import TruncMonth
+        monthly_doses = self.queryset.filter(
+            patient__patient_id=patient_id,
+            scan_date__gte=six_months_ago
+        ).annotate(month=TruncMonth('scan_date')).values('month').annotate(monthly_total=Sum('total_dlp')).order_by('month')
+        
+        return Response({"success": True, "data": monthly_doses})
+
+    @action(detail=False, methods=['get'])
+    def dose_statistics(self, request):
+        patient_id = request.query_params.get('patient_id')
+        if not patient_id:
+            return Response({"success": False, "error": "patient_id required"}, status=400)
+            
+        stats = self.queryset.filter(patient__patient_id=patient_id).aggregate(
+            average=Avg('total_dlp'),
+            high=models.Max('total_dlp'),
+            low=models.Min('total_dlp')
+        )
+        
+        return Response({
+            "success": True, 
+            "data": {
+                "average": round(stats['average'] or 0, 2),
+                "high": round(stats['high'] or 0, 2),
+                "low": round(stats['low'] or 0, 2)
+            }
+        })
+
+    @action(detail=False, methods=['post'])
+    def detect_anomalies(self, request):
+        patient_id = request.data.get('patient_id')
+        if not patient_id:
+            return Response({"success": False, "error": "patient_id required"}, status=400)
+        
+        # Logic to identify abnormal parameters (highly simplified)
+        from patients.models import Patient
+        try:
+            patient = Patient.objects.get(patient_id=patient_id)
+        except Patient.DoesNotExist:
+            return Response({"success": False, "error": "Patient not found"}, status=404)
+
+        anomalies = []
+        recent_scans = ScanDose.objects.filter(patient=patient).order_by('-scan_date')[:5]
+        for scan in recent_scans:
+            if scan.total_dlp > 1000: # Threshold for anomaly
+                anomaly, created = DoseAnomaly.objects.get_or_create(
+                    patient=patient,
+                    anomaly_id=f"PX-{scan.id}",
+                    defaults={
+                        "area": scan.study_description,
+                        "description": "Unusually high Dose Length Product detected.",
+                        "dlp_value": scan.total_dlp,
+                        "status_level": "CRITICAL"
+                    }
+                )
+                anomalies.append(DoseAnomalySerializer(anomaly).data)
+        
+        return Response({"success": True, "anomalies": anomalies})
+
 class OrganDoseViewSet(viewsets.ModelViewSet):
     queryset = OrganDose.objects.all()
     serializer_class = OrganDoseSerializer
@@ -199,36 +283,28 @@ class DoseAnomalyViewSet(viewsets.ModelViewSet):
     queryset = DoseAnomaly.objects.all()
     serializer_class = DoseAnomalySerializer
     
-    # Optional: Filter anomalies by a specific patient
     def get_queryset(self):
         queryset = DoseAnomaly.objects.all()
         patient_id = self.request.query_params.get('patient_id')
         if patient_id is not None:
-            queryset = queryset.filter(patient_id=patient_id)
+            queryset = queryset.filter(patient__patient_id=patient_id)
         return queryset
 
 class DashboardViewSet(viewsets.ViewSet):
-    """
-    A simple ViewSet for retrieving centralized dashboard metrics.
-    """
     def list(self, request):
         today = timezone.now().date()
-        
-        # 1. Total Scans Today
         total_scans_today = ScanDose.objects.filter(scan_date__date=today).count()
-        
-        # 2. Active Alerts Source
         active_alerts_count = Alert.objects.filter(is_active=True).count()
-        
-        # 3. Compliance Rate (Mock Calculation for Demo)
-        # Assuming we aim for 100%, but could drop based on anomalies
         anomalies_today = DoseAnomaly.objects.filter(detected_at__date=today).count()
-        compliance_rate = max(0, 100 - (anomalies_today * 5)) # Base logic: each anomaly drops compliance by 5%
+        compliance_rate = max(0, 100 - (anomalies_today * 5))
         
         return Response({
-            "total_scans_today": total_scans_today,
-            "active_alerts_count": active_alerts_count,
-            "safety_compliance_percentage": compliance_rate
+            "success": True,
+            "data": {
+                "total_scans_today": total_scans_today,
+                "active_alerts_count": active_alerts_count,
+                "safety_compliance_percentage": compliance_rate
+            }
         })
 
 class ScanParameterViewSet(viewsets.ModelViewSet):

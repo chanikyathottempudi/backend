@@ -7,7 +7,8 @@ class Patient(models.Model):
     age = models.IntegerField(null=True, blank=True)
     dob = models.DateField(null=True, blank=True)
     room_number = models.CharField(max_length=50, null=True, blank=True)
-    allergies = models.TextField(default="None")
+    allergies = models.TextField(default="None", blank=True, null=True)
+    blood_group = models.CharField(max_length=10, null=True, blank=True)
     clinical_notes = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

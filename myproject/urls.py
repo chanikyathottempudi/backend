@@ -21,11 +21,11 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/doctor/', include('doctor.urls')),
-    path('api/patients/', include('patients.urls')),
-    path('api/dicom/', include('dicom.urls')),
-    path('api/dosestats/', include('dosestats.urls')),
-    path('api/monitor/', include('realtimemonitor.urls')),
-    path('api/admincenter/', include('admincenter.urls')),
-    path('api/airisk/', include('airisk.urls')),
+    path('doctor/', include('doctor.urls')),
+    path('patients/', include('patients.urls')),
+    path('dicom/', include('dicom.urls')),
+    path('dosestats/', include('dosestats.urls')),
+    path('monitor/', include('realtimemonitor.urls')),
+    path('admincenter/', include('admincenter.urls')),
+    path('airisk/', include('airisk.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

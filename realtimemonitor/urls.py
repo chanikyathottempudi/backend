@@ -1,10 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from .views import RealTimeDoseViewSet
 
-router = DefaultRouter()
-router.register(r'stream', RealTimeDoseViewSet, basename='realtimedose')
-
 urlpatterns = [
-    path('', include(router.urls)),
+    path('stream/', RealTimeDoseViewSet.as_view({'get': 'list', 'post': 'create'}), name='realtimedose-list'),
+    path('stream/<int:pk>/', RealTimeDoseViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}), name='realtimedose-detail'),
 ]

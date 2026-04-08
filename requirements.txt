@@ -1,0 +1,11 @@
+django>=5.0
+djangorestframework
+djangorestframework-simplejwt
+mysqlclient
+Pillow
+pydicom
+opencv-python
+django-cors-headers
+django-filter
+numpy
+pandas
